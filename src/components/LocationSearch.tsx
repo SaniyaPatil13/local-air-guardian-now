@@ -65,6 +65,7 @@ export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
     setSearchTerm(location);
     setIsExpanded(false);
     onLocationChange(location);
+    console.log(`Location selected: ${location}`);
   };
 
   const handleCurrentLocation = () => {
@@ -73,8 +74,10 @@ export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
         (position) => {
           const { latitude, longitude } = position.coords;
           // In a real app, you'd reverse geocode these coordinates to Indian location
-          const locationName = `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
-          handleLocationSelect(locationName);
+          console.log(`Current location: ${latitude}, ${longitude}`);
+          // For demo, we'll default to Delhi
+          const currentLocation = "Delhi, India";
+          handleLocationSelect(currentLocation);
         },
         (error) => {
           console.error("Error getting location:", error);
@@ -82,7 +85,15 @@ export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
           handleLocationSelect("Delhi, India");
         }
       );
+    } else {
+      console.log("Geolocation not supported");
+      handleLocationSelect("Delhi, India");
     }
+  };
+
+  const handleBlur = () => {
+    // Delay hiding to allow for clicks
+    setTimeout(() => setIsExpanded(false), 200);
   };
 
   return (
@@ -95,7 +106,8 @@ export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
             placeholder="Search Indian cities..."
             value={searchTerm}
             onChange={(e) => handleSearch(e.target.value)}
-            onFocus={() => setIsExpanded(true)}
+            onFocus={() => searchTerm.length === 0 && setIsExpanded(true)}
+            onBlur={handleBlur}
             className="pl-10 w-64"
           />
         </div>
@@ -111,7 +123,7 @@ export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
       </div>
 
       {isExpanded && (
-        <Card className="absolute top-full left-0 right-0 mt-1 z-50 max-h-64 overflow-y-auto">
+        <Card className="absolute top-full left-0 right-0 mt-1 z-50 max-h-64 overflow-y-auto bg-white border shadow-lg">
           <div className="p-2">
             {filteredLocations.length > 0 ? (
               <>

@@ -12,80 +12,142 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Wind, Thermometer, Droplets, Eye, Activity, MapPin, TrendingUp, AlertTriangle } from "lucide-react";
 
-// Mock CPCB data for major Indian cities with districts
-const mockIndiaAQI = {
-  location: "Delhi, India",
-  aqi: 165,
-  category: "Unhealthy",
-  primaryPollutant: "PM2.5",
-  timestamp: new Date().toISOString(),
-  coordinates: { lat: 28.6139, lng: 77.2090 },
-  weather: {
-    temperature: 28,
-    humidity: 72,
-    windSpeed: 12,
-    visibility: 6
-  },
-  pollutants: {
-    pm25: 85.2,
-    pm10: 120.4,
-    o3: 42.1,
-    no2: 68.7,
-    so2: 15.3,
-    co: 1.8
-  },
-  cpcbStation: "Delhi - Anand Vihar",
-  state: "Delhi",
-  district: "Central Delhi"
+// Mock location-based CPCB data
+const getLocationData = (location: string) => {
+  const locationMappings = {
+    "Delhi, India": {
+      location: "Delhi, India",
+      aqi: 165,
+      category: "Unhealthy",
+      primaryPollutant: "PM2.5",
+      coordinates: { lat: 28.6139, lng: 77.2090 },
+      weather: {
+        temperature: 28,
+        humidity: 72,
+        windSpeed: 12,
+        visibility: 6
+      },
+      pollutants: {
+        pm25: 85.2,
+        pm10: 120.4,
+        o3: 42.1,
+        no2: 68.7,
+        so2: 15.3,
+        co: 1.8
+      },
+      cpcbStation: "Delhi - Anand Vihar",
+      state: "Delhi",
+      district: "Central Delhi"
+    },
+    "Mumbai, Maharashtra": {
+      location: "Mumbai, Maharashtra",
+      aqi: 142,
+      category: "Moderate",
+      primaryPollutant: "PM2.5",
+      coordinates: { lat: 19.0760, lng: 72.8777 },
+      weather: {
+        temperature: 32,
+        humidity: 78,
+        windSpeed: 15,
+        visibility: 8
+      },
+      pollutants: {
+        pm25: 65.8,
+        pm10: 95.2,
+        o3: 38.5,
+        no2: 52.3,
+        so2: 12.1,
+        co: 1.2
+      },
+      cpcbStation: "Mumbai - Bandra Kurla",
+      state: "Maharashtra",
+      district: "Mumbai Suburban"
+    },
+    "Bangalore, Karnataka": {
+      location: "Bangalore, Karnataka",
+      aqi: 98,
+      category: "Satisfactory",
+      primaryPollutant: "PM10",
+      coordinates: { lat: 12.9716, lng: 77.5946 },
+      weather: {
+        temperature: 26,
+        humidity: 65,
+        windSpeed: 8,
+        visibility: 10
+      },
+      pollutants: {
+        pm25: 42.3,
+        pm10: 78.5,
+        o3: 35.2,
+        no2: 45.8,
+        so2: 8.9,
+        co: 0.9
+      },
+      cpcbStation: "Bangalore - BTM Layout",
+      state: "Karnataka",
+      district: "Bangalore Urban"
+    }
+  };
+
+  return locationMappings[location] || locationMappings["Delhi, India"];
 };
 
-const mockHistoricalData = [
-  { date: "2024-07-01", aqi: 95 },
-  { date: "2024-07-02", aqi: 112 },
-  { date: "2024-07-03", aqi: 138 },
-  { date: "2024-07-04", aqi: 155 },
-  { date: "2024-07-05", aqi: 172 },
-  { date: "2024-07-06", aqi: 165 },
-  { date: "2024-07-07", aqi: 148 },
-  { date: "2024-07-08", aqi: 135 },
-  { date: "2024-07-09", aqi: 165 }
-];
+const generateHistoricalData = (location: string) => {
+  const baseAQI = getLocationData(location).aqi;
+  return Array.from({ length: 9 }, (_, i) => ({
+    date: new Date(Date.now() - (8 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    aqi: Math.max(20, baseAQI + (Math.random() - 0.5) * 60)
+  }));
+};
 
-const mockForecastData = [
-  { date: "2024-07-10", aqi: 158, confidence: 85 },
-  { date: "2024-07-11", aqi: 142, confidence: 78 },
-  { date: "2024-07-12", aqi: 135, confidence: 65 }
-];
+const generateForecastData = (location: string) => {
+  const baseAQI = getLocationData(location).aqi;
+  return Array.from({ length: 3 }, (_, i) => ({
+    date: new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    aqi: Math.max(20, baseAQI + (Math.random() - 0.5) * 40),
+    confidence: Math.max(60, 90 - i * 10)
+  }));
+};
 
 const Index = () => {
-  const [currentData, setCurrentData] = useState(mockIndiaAQI);
-  const [historicalData, setHistoricalData] = useState(mockHistoricalData);
-  const [forecastData, setForecastData] = useState(mockForecastData);
   const [selectedLocation, setSelectedLocation] = useState("Delhi, India");
+  const [currentData, setCurrentData] = useState(getLocationData("Delhi, India"));
+  const [historicalData, setHistoricalData] = useState(generateHistoricalData("Delhi, India"));
+  const [forecastData, setForecastData] = useState(generateForecastData("Delhi, India"));
   const [showNotifications, setShowNotifications] = useState(true);
+
+  // Update data when location changes
+  useEffect(() => {
+    const newData = getLocationData(selectedLocation);
+    setCurrentData({
+      ...newData,
+      timestamp: new Date().toISOString()
+    });
+    setHistoricalData(generateHistoricalData(selectedLocation));
+    setForecastData(generateForecastData(selectedLocation));
+  }, [selectedLocation]);
 
   // Simulate real-time CPCB updates
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentData(prev => ({
         ...prev,
-        aqi: Math.max(0, Math.min(500, prev.aqi + (Math.random() - 0.5) * 20)),
+        aqi: Math.max(0, Math.min(500, prev.aqi + (Math.random() - 0.5) * 10)),
         timestamp: new Date().toISOString(),
         pollutants: {
           ...prev.pollutants,
-          pm25: Math.max(0, prev.pollutants.pm25 + (Math.random() - 0.5) * 10),
-          pm10: Math.max(0, prev.pollutants.pm10 + (Math.random() - 0.5) * 15)
+          pm25: Math.max(0, prev.pollutants.pm25 + (Math.random() - 0.5) * 5),
+          pm10: Math.max(0, prev.pollutants.pm10 + (Math.random() - 0.5) * 8)
         }
       }));
-    }, 30000); // Update every 30 seconds
+    }, 30000);
 
     return () => clearInterval(interval);
   }, []);
 
   const handleLocationChange = (location: string) => {
-    setSelectedLocation(location);
-    // In real app, this would trigger CPCB API calls for new location
     console.log(`Fetching CPCB data for: ${location}`);
+    setSelectedLocation(location);
   };
 
   return (
@@ -121,13 +183,8 @@ const Index = () => {
 
       <div className="container mx-auto px-4 py-6 space-y-6">
         {/* Current AQI Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <AQICard data={currentData} />
-          </div>
-          <div>
-            <HealthRecommendations aqi={currentData.aqi} category={currentData.category} />
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+          <AQICard data={currentData} />
         </div>
 
         {/* Weather Context & CPCB Info */}
@@ -191,12 +248,11 @@ const Index = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="india-map" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="india-map">India Map</TabsTrigger>
             <TabsTrigger value="trends">Historical Data</TabsTrigger>
             <TabsTrigger value="forecast">3-Day Forecast</TabsTrigger>
-            <TabsTrigger value="pollutants">Pollutant Analysis</TabsTrigger>
-            <TabsTrigger value="sources">Pollution Sources</TabsTrigger>
+            <TabsTrigger value="health">Health Advisory</TabsTrigger>
           </TabsList>
           
           <TabsContent value="india-map" className="mt-6">
@@ -211,49 +267,51 @@ const Index = () => {
             <ForecastChart data={forecastData} />
           </TabsContent>
           
-          <TabsContent value="pollutants" className="mt-6">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center">
-                <Activity className="h-5 w-5 mr-2 text-purple-500" />
-                Pollutant Breakdown (CPCB Standards)
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(currentData.pollutants).map(([pollutant, value]) => {
-                  const isHigh = pollutant === 'pm25' ? value > 60 : pollutant === 'pm10' ? value > 100 : value > 40;
-                  return (
-                    <div key={pollutant} className={`${isHigh ? 'bg-red-50 border-red-200' : 'bg-gray-50'} rounded-lg p-4 border`}>
-                      <div className="text-sm text-gray-600 uppercase tracking-wide">
-                        {pollutant.replace(/(\d+)/, '$1.')}
-                      </div>
-                      <div className={`text-2xl font-bold ${isHigh ? 'text-red-600' : 'text-gray-900'}`}>
-                        {value.toFixed(1)} <span className="text-sm text-gray-500">μg/m³</span>
-                      </div>
-                      {isHigh && (
-                        <div className="flex items-center mt-1">
-                          <AlertTriangle className="h-3 w-3 text-red-500 mr-1" />
-                          <span className="text-xs text-red-600">Above safe limit</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-semibold text-blue-800 mb-2">Indian NAAQS Standards</h4>
-                <div className="text-sm text-blue-700 space-y-1">
-                  <p>PM2.5: 60 μg/m³ (24-hour average)</p>
-                  <p>PM10: 100 μg/m³ (24-hour average)</p>
-                  <p>NO₂: 80 μg/m³ (24-hour average)</p>
-                  <p>SO₂: 80 μg/m³ (24-hour average)</p>
-                </div>
-              </div>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="sources" className="mt-6">
-            <PollutionSourceMap />
+          <TabsContent value="health" className="mt-6">
+            <HealthRecommendations aqi={currentData.aqi} category={currentData.category} />
           </TabsContent>
         </Tabs>
+
+        {/* Pollutant Analysis */}
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center">
+            <Activity className="h-5 w-5 mr-2 text-purple-500" />
+            Pollutant Breakdown (CPCB Standards)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Object.entries(currentData.pollutants).map(([pollutant, value]) => {
+              const isHigh = pollutant === 'pm25' ? value > 60 : pollutant === 'pm10' ? value > 100 : value > 40;
+              return (
+                <div key={pollutant} className={`${isHigh ? 'bg-red-50 border-red-200' : 'bg-gray-50'} rounded-lg p-4 border`}>
+                  <div className="text-sm text-gray-600 uppercase tracking-wide">
+                    {pollutant.replace(/(\d+)/, '$1.')}
+                  </div>
+                  <div className={`text-2xl font-bold ${isHigh ? 'text-red-600' : 'text-gray-900'}`}>
+                    {value.toFixed(1)} <span className="text-sm text-gray-500">μg/m³</span>
+                  </div>
+                  {isHigh && (
+                    <div className="flex items-center mt-1">
+                      <AlertTriangle className="h-3 w-3 text-red-500 mr-1" />
+                      <span className="text-xs text-red-600">Above safe limit</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <h4 className="font-semibold text-blue-800 mb-2">Indian NAAQS Standards</h4>
+            <div className="text-sm text-blue-700 space-y-1">
+              <p>PM2.5: 60 μg/m³ (24-hour average)</p>
+              <p>PM10: 100 μg/m³ (24-hour average)</p>
+              <p>NO₂: 80 μg/m³ (24-hour average)</p>
+              <p>SO₂: 80 μg/m³ (24-hour average)</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Pollution Sources */}
+        <PollutionSourceMap />
       </div>
     </div>
   );
