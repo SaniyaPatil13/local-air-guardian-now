@@ -1,63 +1,81 @@
 
 import { useState, useEffect } from "react";
 import { AQICard } from "@/components/AQICard";
-import { AQIMap } from "@/components/AQIMap";
+import { IndiaAQIMap } from "@/components/IndiaAQIMap";
 import { HealthRecommendations } from "@/components/HealthRecommendations";
 import { TrendChart } from "@/components/TrendChart";
+import { ForecastChart } from "@/components/ForecastChart";
 import { LocationSearch } from "@/components/LocationSearch";
 import { AlertBanner } from "@/components/AlertBanner";
+import { PollutionSourceMap } from "@/components/PollutionSourceMap";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Wind, Thermometer, Droplets, Eye } from "lucide-react";
+import { Wind, Thermometer, Droplets, Eye, Activity, MapPin, TrendingUp, AlertTriangle } from "lucide-react";
 
-// Mock data structure - will be replaced with real API calls
-const mockCurrentAQI = {
-  location: "San Francisco, CA",
-  aqi: 75,
-  category: "Moderate",
+// Mock CPCB data for major Indian cities with districts
+const mockIndiaAQI = {
+  location: "Delhi, India",
+  aqi: 165,
+  category: "Unhealthy",
   primaryPollutant: "PM2.5",
   timestamp: new Date().toISOString(),
-  coordinates: { lat: 37.7749, lng: -122.4194 },
+  coordinates: { lat: 28.6139, lng: 77.2090 },
   weather: {
-    temperature: 68,
-    humidity: 65,
-    windSpeed: 8,
-    visibility: 10
+    temperature: 28,
+    humidity: 72,
+    windSpeed: 12,
+    visibility: 6
   },
   pollutants: {
-    pm25: 22.1,
-    pm10: 35.4,
-    o3: 68.2,
-    no2: 28.7,
-    so2: 5.1,
-    co: 0.8
-  }
+    pm25: 85.2,
+    pm10: 120.4,
+    o3: 42.1,
+    no2: 68.7,
+    so2: 15.3,
+    co: 1.8
+  },
+  cpcbStation: "Delhi - Anand Vihar",
+  state: "Delhi",
+  district: "Central Delhi"
 };
 
 const mockHistoricalData = [
-  { date: "2024-07-01", aqi: 45 },
-  { date: "2024-07-02", aqi: 52 },
-  { date: "2024-07-03", aqi: 68 },
-  { date: "2024-07-04", aqi: 75 },
-  { date: "2024-07-05", aqi: 82 },
-  { date: "2024-07-06", aqi: 71 },
-  { date: "2024-07-07", aqi: 65 },
-  { date: "2024-07-08", aqi: 58 },
-  { date: "2024-07-09", aqi: 75 }
+  { date: "2024-07-01", aqi: 95 },
+  { date: "2024-07-02", aqi: 112 },
+  { date: "2024-07-03", aqi: 138 },
+  { date: "2024-07-04", aqi: 155 },
+  { date: "2024-07-05", aqi: 172 },
+  { date: "2024-07-06", aqi: 165 },
+  { date: "2024-07-07", aqi: 148 },
+  { date: "2024-07-08", aqi: 135 },
+  { date: "2024-07-09", aqi: 165 }
+];
+
+const mockForecastData = [
+  { date: "2024-07-10", aqi: 158, confidence: 85 },
+  { date: "2024-07-11", aqi: 142, confidence: 78 },
+  { date: "2024-07-12", aqi: 135, confidence: 65 }
 ];
 
 const Index = () => {
-  const [currentData, setCurrentData] = useState(mockCurrentAQI);
+  const [currentData, setCurrentData] = useState(mockIndiaAQI);
   const [historicalData, setHistoricalData] = useState(mockHistoricalData);
-  const [selectedLocation, setSelectedLocation] = useState("San Francisco, CA");
+  const [forecastData, setForecastData] = useState(mockForecastData);
+  const [selectedLocation, setSelectedLocation] = useState("Delhi, India");
+  const [showNotifications, setShowNotifications] = useState(true);
 
-  // Simulate real-time updates
+  // Simulate real-time CPCB updates
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentData(prev => ({
         ...prev,
-        aqi: Math.max(0, Math.min(500, prev.aqi + (Math.random() - 0.5) * 10)),
-        timestamp: new Date().toISOString()
+        aqi: Math.max(0, Math.min(500, prev.aqi + (Math.random() - 0.5) * 20)),
+        timestamp: new Date().toISOString(),
+        pollutants: {
+          ...prev.pollutants,
+          pm25: Math.max(0, prev.pollutants.pm25 + (Math.random() - 0.5) * 10),
+          pm10: Math.max(0, prev.pollutants.pm10 + (Math.random() - 0.5) * 15)
+        }
       }));
     }, 30000); // Update every 30 seconds
 
@@ -66,34 +84,38 @@ const Index = () => {
 
   const handleLocationChange = (location: string) => {
     setSelectedLocation(location);
-    // In real app, this would trigger API calls for new location
-    console.log(`Fetching data for: ${location}`);
+    // In real app, this would trigger CPCB API calls for new location
+    console.log(`Fetching CPCB data for: ${location}`);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-green-50 to-blue-50">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-white/20 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-                AirGuardian
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-green-600 bg-clip-text text-transparent">
+                AirGuardian India
               </h1>
-              <p className="text-sm text-gray-600">Real-time Air Quality Intelligence</p>
+              <p className="text-sm text-gray-600">Real-time CPCB Air Quality Intelligence</p>
             </div>
             <div className="flex items-center space-x-4">
               <LocationSearch onLocationChange={handleLocationChange} />
+              <div className="flex items-center space-x-2 text-sm">
+                <Activity className="h-4 w-4 text-green-500" />
+                <span className="text-green-600 font-medium">CPCB Live</span>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Alert Banner */}
-      {currentData.aqi > 100 && (
+      {/* Alert Banners */}
+      {currentData.aqi > 150 && showNotifications && (
         <AlertBanner 
-          level="warning" 
-          message="Air quality is unhealthy for sensitive groups. Consider limiting outdoor activities."
+          level="error" 
+          message={`Unhealthy air quality detected in ${currentData.district}. Limit outdoor activities and use air purifiers.`}
         />
       )}
 
@@ -108,68 +130,128 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Weather Context */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <Wind className="h-5 w-5 mr-2 text-blue-500" />
-            Weather Context
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="flex items-center space-x-2">
-              <Thermometer className="h-4 w-4 text-orange-500" />
-              <span className="text-sm text-gray-600">Temperature:</span>
-              <span className="font-medium">{currentData.weather.temperature}°F</span>
+        {/* Weather Context & CPCB Info */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <Wind className="h-5 w-5 mr-2 text-blue-500" />
+              Weather Context
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center space-x-2">
+                <Thermometer className="h-4 w-4 text-orange-500" />
+                <span className="text-sm text-gray-600">Temperature:</span>
+                <span className="font-medium">{currentData.weather.temperature}°C</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Droplets className="h-4 w-4 text-blue-500" />
+                <span className="text-sm text-gray-600">Humidity:</span>
+                <span className="font-medium">{currentData.weather.humidity}%</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Wind className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-600">Wind:</span>
+                <span className="font-medium">{currentData.weather.windSpeed} km/h</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Eye className="h-4 w-4 text-purple-500" />
+                <span className="text-sm text-gray-600">Visibility:</span>
+                <span className="font-medium">{currentData.weather.visibility} km</span>
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Droplets className="h-4 w-4 text-blue-500" />
-              <span className="text-sm text-gray-600">Humidity:</span>
-              <span className="font-medium">{currentData.weather.humidity}%</span>
+          </Card>
+
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <MapPin className="h-5 w-5 mr-2 text-green-500" />
+              CPCB Station Info
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <span className="text-sm text-gray-600">Station:</span>
+                <span className="font-medium ml-2">{currentData.cpcbStation}</span>
+              </div>
+              <div>
+                <span className="text-sm text-gray-600">State:</span>
+                <span className="font-medium ml-2">{currentData.state}</span>
+              </div>
+              <div>
+                <span className="text-sm text-gray-600">District:</span>
+                <span className="font-medium ml-2">{currentData.district}</span>
+              </div>
+              <div>
+                <span className="text-sm text-gray-600">Last Updated:</span>
+                <span className="font-medium ml-2">
+                  {new Date(currentData.timestamp).toLocaleTimeString('en-IN')}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Wind className="h-4 w-4 text-gray-500" />
-              <span className="text-sm text-gray-600">Wind:</span>
-              <span className="font-medium">{currentData.weather.windSpeed} mph</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Eye className="h-4 w-4 text-purple-500" />
-              <span className="text-sm text-gray-600">Visibility:</span>
-              <span className="font-medium">{currentData.weather.visibility} mi</span>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="map" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="map">Interactive Map</TabsTrigger>
-            <TabsTrigger value="trends">Historical Trends</TabsTrigger>
-            <TabsTrigger value="pollutants">Pollutant Details</TabsTrigger>
+        <Tabs defaultValue="india-map" className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="india-map">India Map</TabsTrigger>
+            <TabsTrigger value="trends">Historical Data</TabsTrigger>
+            <TabsTrigger value="forecast">3-Day Forecast</TabsTrigger>
+            <TabsTrigger value="pollutants">Pollutant Analysis</TabsTrigger>
+            <TabsTrigger value="sources">Pollution Sources</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="map" className="mt-6">
-            <AQIMap currentLocation={currentData} />
+          <TabsContent value="india-map" className="mt-6">
+            <IndiaAQIMap currentLocation={currentData} />
           </TabsContent>
           
           <TabsContent value="trends" className="mt-6">
             <TrendChart data={historicalData} />
           </TabsContent>
           
+          <TabsContent value="forecast" className="mt-6">
+            <ForecastChart data={forecastData} />
+          </TabsContent>
+          
           <TabsContent value="pollutants" className="mt-6">
             <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Pollutant Breakdown</h3>
+              <h3 className="text-lg font-semibold mb-4 flex items-center">
+                <Activity className="h-5 w-5 mr-2 text-purple-500" />
+                Pollutant Breakdown (CPCB Standards)
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(currentData.pollutants).map(([pollutant, value]) => (
-                  <div key={pollutant} className="bg-gray-50 rounded-lg p-4">
-                    <div className="text-sm text-gray-600 uppercase tracking-wide">
-                      {pollutant.replace(/(\d+)/, '$1.')}
+                {Object.entries(currentData.pollutants).map(([pollutant, value]) => {
+                  const isHigh = pollutant === 'pm25' ? value > 60 : pollutant === 'pm10' ? value > 100 : value > 40;
+                  return (
+                    <div key={pollutant} className={`${isHigh ? 'bg-red-50 border-red-200' : 'bg-gray-50'} rounded-lg p-4 border`}>
+                      <div className="text-sm text-gray-600 uppercase tracking-wide">
+                        {pollutant.replace(/(\d+)/, '$1.')}
+                      </div>
+                      <div className={`text-2xl font-bold ${isHigh ? 'text-red-600' : 'text-gray-900'}`}>
+                        {value.toFixed(1)} <span className="text-sm text-gray-500">μg/m³</span>
+                      </div>
+                      {isHigh && (
+                        <div className="flex items-center mt-1">
+                          <AlertTriangle className="h-3 w-3 text-red-500 mr-1" />
+                          <span className="text-xs text-red-600">Above safe limit</span>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">
-                      {value} <span className="text-sm text-gray-500">μg/m³</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
+              </div>
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <h4 className="font-semibold text-blue-800 mb-2">Indian NAAQS Standards</h4>
+                <div className="text-sm text-blue-700 space-y-1">
+                  <p>PM2.5: 60 μg/m³ (24-hour average)</p>
+                  <p>PM10: 100 μg/m³ (24-hour average)</p>
+                  <p>NO₂: 80 μg/m³ (24-hour average)</p>
+                  <p>SO₂: 80 μg/m³ (24-hour average)</p>
+                </div>
               </div>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="sources" className="mt-6">
+            <PollutionSourceMap />
           </TabsContent>
         </Tabs>
       </div>

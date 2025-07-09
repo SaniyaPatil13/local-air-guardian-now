@@ -9,15 +9,37 @@ interface LocationSearchProps {
   onLocationChange: (location: string) => void;
 }
 
-const popularLocations = [
-  "San Francisco, CA",
-  "Los Angeles, CA", 
-  "New York, NY",
-  "Chicago, IL",
-  "Houston, TX",
-  "Phoenix, AZ",
-  "Philadelphia, PA",
-  "San Antonio, TX"
+const indianCities = [
+  "Delhi, India",
+  "Mumbai, Maharashtra", 
+  "Bangalore, Karnataka",
+  "Chennai, Tamil Nadu",
+  "Kolkata, West Bengal",
+  "Hyderabad, Telangana",
+  "Pune, Maharashtra",
+  "Ahmedabad, Gujarat",
+  "Jaipur, Rajasthan",
+  "Lucknow, Uttar Pradesh",
+  "Kanpur, Uttar Pradesh",
+  "Nagpur, Maharashtra",
+  "Indore, Madhya Pradesh",
+  "Bhopal, Madhya Pradesh",
+  "Patna, Bihar",
+  "Gurgaon, Haryana",
+  "Noida, Uttar Pradesh",
+  "Faridabad, Haryana",
+  "Ghaziabad, Uttar Pradesh",
+  "Agra, Uttar Pradesh",
+  "Varanasi, Uttar Pradesh",
+  "Meerut, Uttar Pradesh",
+  "Rajkot, Gujarat",
+  "Kalyan-Dombivli, Maharashtra",
+  "Vasai-Virar, Maharashtra",
+  "Vijayawada, Andhra Pradesh",
+  "Jodhpur, Rajasthan",
+  "Madurai, Tamil Nadu",
+  "Raipur, Chhattisgarh",
+  "Kota, Rajasthan"
 ];
 
 export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
@@ -28,7 +50,7 @@ export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
   const handleSearch = (value: string) => {
     setSearchTerm(value);
     if (value.length > 0) {
-      const filtered = popularLocations.filter(location =>
+      const filtered = indianCities.filter(location =>
         location.toLowerCase().includes(value.toLowerCase())
       );
       setFilteredLocations(filtered);
@@ -50,14 +72,14 @@ export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          // In a real app, you'd reverse geocode these coordinates
+          // In a real app, you'd reverse geocode these coordinates to Indian location
           const locationName = `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
           handleLocationSelect(locationName);
         },
         (error) => {
           console.error("Error getting location:", error);
-          // Fallback to a default location
-          handleLocationSelect("Current Location");
+          // Fallback to Delhi
+          handleLocationSelect("Delhi, India");
         }
       );
     }
@@ -70,7 +92,7 @@ export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             type="text"
-            placeholder="Search location..."
+            placeholder="Search Indian cities..."
             value={searchTerm}
             onChange={(e) => handleSearch(e.target.value)}
             onFocus={() => setIsExpanded(true)}
@@ -107,8 +129,8 @@ export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
               </>
             ) : searchTerm.length === 0 ? (
               <>
-                <div className="text-xs text-gray-500 mb-2 px-2">Popular Locations</div>
-                {popularLocations.slice(0, 5).map((location) => (
+                <div className="text-xs text-gray-500 mb-2 px-2">Major Indian Cities</div>
+                {indianCities.slice(0, 8).map((location) => (
                   <button
                     key={location}
                     onClick={() => handleLocationSelect(location)}
@@ -121,7 +143,7 @@ export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
               </>
             ) : (
               <div className="px-3 py-2 text-sm text-gray-500">
-                No locations found for "{searchTerm}"
+                No Indian cities found for "{searchTerm}"
               </div>
             )}
           </div>
