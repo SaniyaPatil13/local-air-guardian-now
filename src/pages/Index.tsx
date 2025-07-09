@@ -248,11 +248,12 @@ const Index = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="india-map" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="india-map">India Map</TabsTrigger>
             <TabsTrigger value="trends">Historical Data</TabsTrigger>
             <TabsTrigger value="forecast">3-Day Forecast</TabsTrigger>
             <TabsTrigger value="health">Health Advisory</TabsTrigger>
+            <TabsTrigger value="pollution-sources">Pollution Sources</TabsTrigger>
           </TabsList>
           
           <TabsContent value="india-map" className="mt-6">
@@ -270,6 +271,10 @@ const Index = () => {
           <TabsContent value="health" className="mt-6">
             <HealthRecommendations aqi={currentData.aqi} category={currentData.category} />
           </TabsContent>
+          
+          <TabsContent value="pollution-sources" className="mt-6">
+            <PollutionSourceMap />
+          </TabsContent>
         </Tabs>
 
         {/* Pollutant Analysis */}
@@ -280,14 +285,15 @@ const Index = () => {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries(currentData.pollutants).map(([pollutant, value]) => {
-              const isHigh = pollutant === 'pm25' ? value > 60 : pollutant === 'pm10' ? value > 100 : value > 40;
+              const numValue = Number(value);
+              const isHigh = pollutant === 'pm25' ? numValue > 60 : pollutant === 'pm10' ? numValue > 100 : numValue > 40;
               return (
                 <div key={pollutant} className={`${isHigh ? 'bg-red-50 border-red-200' : 'bg-gray-50'} rounded-lg p-4 border`}>
                   <div className="text-sm text-gray-600 uppercase tracking-wide">
                     {pollutant.replace(/(\d+)/, '$1.')}
                   </div>
                   <div className={`text-2xl font-bold ${isHigh ? 'text-red-600' : 'text-gray-900'}`}>
-                    {value.toFixed(1)} <span className="text-sm text-gray-500">μg/m³</span>
+                    {numValue.toFixed(1)} <span className="text-sm text-gray-500">μg/m³</span>
                   </div>
                   {isHigh && (
                     <div className="flex items-center mt-1">
@@ -309,9 +315,6 @@ const Index = () => {
             </div>
           </div>
         </Card>
-
-        {/* Pollution Sources */}
-        <PollutionSourceMap />
       </div>
     </div>
   );
