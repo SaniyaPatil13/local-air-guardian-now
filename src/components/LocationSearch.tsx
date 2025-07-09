@@ -64,8 +64,9 @@ export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
   const handleLocationSelect = (location: string) => {
     setSearchTerm(location);
     setIsExpanded(false);
+    setFilteredLocations([]);
     onLocationChange(location);
-    console.log(`Location selected: ${location}`);
+    console.log(`Location selected and passed: ${location}`);
   };
 
   const handleCurrentLocation = () => {
@@ -73,15 +74,13 @@ export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          // In a real app, you'd reverse geocode these coordinates to Indian location
-          console.log(`Current location: ${latitude}, ${longitude}`);
-          // For demo, we'll default to Delhi
+          console.log(`Current location coordinates: ${latitude}, ${longitude}`);
+          // For demo, we'll default to Delhi but in real implementation this would be reverse geocoded
           const currentLocation = "Delhi, India";
           handleLocationSelect(currentLocation);
         },
         (error) => {
           console.error("Error getting location:", error);
-          // Fallback to Delhi
           handleLocationSelect("Delhi, India");
         }
       );
@@ -91,9 +90,19 @@ export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
     }
   };
 
+  const handleInputFocus = () => {
+    if (searchTerm.length === 0) {
+      setFilteredLocations(indianCities.slice(0, 8));
+      setIsExpanded(true);
+    }
+  };
+
   const handleBlur = () => {
     // Delay hiding to allow for clicks
-    setTimeout(() => setIsExpanded(false), 200);
+    setTimeout(() => {
+      setIsExpanded(false);
+      setFilteredLocations([]);
+    }, 200);
   };
 
   return (
@@ -106,7 +115,7 @@ export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
             placeholder="Search Indian cities..."
             value={searchTerm}
             onChange={(e) => handleSearch(e.target.value)}
-            onFocus={() => searchTerm.length === 0 && setIsExpanded(true)}
+            onFocus={handleInputFocus}
             onBlur={handleBlur}
             className="pl-10 w-64"
           />
@@ -127,7 +136,9 @@ export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
           <div className="p-2">
             {filteredLocations.length > 0 ? (
               <>
-                <div className="text-xs text-gray-500 mb-2 px-2">Search Results</div>
+                <div className="text-xs text-gray-500 mb-2 px-2">
+                  {searchTerm.length > 0 ? 'Search Results' : 'Major Indian Cities'}
+                </div>
                 {filteredLocations.map((location) => (
                   <button
                     key={location}
@@ -139,25 +150,11 @@ export const LocationSearch = ({ onLocationChange }: LocationSearchProps) => {
                   </button>
                 ))}
               </>
-            ) : searchTerm.length === 0 ? (
-              <>
-                <div className="text-xs text-gray-500 mb-2 px-2">Major Indian Cities</div>
-                {indianCities.slice(0, 8).map((location) => (
-                  <button
-                    key={location}
-                    onClick={() => handleLocationSelect(location)}
-                    className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 transition-colors flex items-center space-x-2"
-                  >
-                    <MapPin className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm">{location}</span>
-                  </button>
-                ))}
-              </>
-            ) : (
+            ) : searchTerm.length > 0 ? (
               <div className="px-3 py-2 text-sm text-gray-500">
                 No Indian cities found for "{searchTerm}"
               </div>
-            )}
+            ) : null}
           </div>
         </Card>
       )}
