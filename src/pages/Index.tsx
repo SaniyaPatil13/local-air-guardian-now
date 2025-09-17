@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { AQICard } from "@/components/AQICard";
 import { IndiaAQIMap } from "@/components/IndiaAQIMap";
@@ -10,145 +9,275 @@ import { AlertBanner } from "@/components/AlertBanner";
 import { PollutionSourceMap } from "@/components/PollutionSourceMap";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Wind, Thermometer, Droplets, Eye, Activity, MapPin, TrendingUp, AlertTriangle } from "lucide-react";
+import { Wind, Thermometer, Droplets, Eye, Activity, MapPin, TrendingUp, AlertTriangle, Loader2 } from "lucide-react";
+import { cpcbApi, CPCBStation } from "@/services/cpcbApi";
+import { locationService } from "@/services/locationService";
 
-// Mock location-based CPCB data
-const getLocationData = (location: string) => {
-  const locationMappings = {
-    "Delhi, India": {
-      location: "Delhi, India",
-      aqi: 165,
-      category: "Unhealthy",
-      primaryPollutant: "PM2.5",
-      coordinates: { lat: 28.6139, lng: 77.2090 },
-      weather: {
-        temperature: 28,
-        humidity: 72,
-        windSpeed: 12,
-        visibility: 6
-      },
-      pollutants: {
-        pm25: 85.2,
-        pm10: 120.4,
-        o3: 42.1,
-        no2: 68.7,
-        so2: 15.3,
-        co: 1.8
-      },
-      cpcbStation: "Delhi - Anand Vihar",
-      state: "Delhi",
-      district: "Central Delhi"
-    },
-    "Mumbai, Maharashtra": {
-      location: "Mumbai, Maharashtra",
-      aqi: 142,
-      category: "Moderate",
-      primaryPollutant: "PM2.5",
-      coordinates: { lat: 19.0760, lng: 72.8777 },
-      weather: {
-        temperature: 32,
-        humidity: 78,
-        windSpeed: 15,
-        visibility: 8
-      },
-      pollutants: {
-        pm25: 65.8,
-        pm10: 95.2,
-        o3: 38.5,
-        no2: 52.3,
-        so2: 12.1,
-        co: 1.2
-      },
-      cpcbStation: "Mumbai - Bandra Kurla",
-      state: "Maharashtra",
-      district: "Mumbai Suburban"
-    },
-    "Bangalore, Karnataka": {
-      location: "Bangalore, Karnataka",
-      aqi: 98,
-      category: "Satisfactory",
-      primaryPollutant: "PM10",
-      coordinates: { lat: 12.9716, lng: 77.5946 },
-      weather: {
-        temperature: 26,
-        humidity: 65,
-        windSpeed: 8,
-        visibility: 10
-      },
-      pollutants: {
-        pm25: 42.3,
-        pm10: 78.5,
-        o3: 35.2,
-        no2: 45.8,
-        so2: 8.9,
-        co: 0.9
-      },
-      cpcbStation: "Bangalore - BTM Layout",
-      state: "Karnataka",
-      district: "Bangalore Urban"
-    }
+interface AQIData {
+  location: string;
+  aqi: number;
+  category: string;
+  primaryPollutant: string;
+  coordinates: { lat: number; lng: number };
+  weather: {
+    temperature: number;
+    humidity: number;
+    windSpeed: number;
+    visibility: number;
   };
+  pollutants: {
+    pm25: number;
+    pm10: number;
+    o3: number;
+    no2: number;
+    so2: number;
+    co: number;
+  };
+  cpcbStation: string;
+  state: string;
+  district: string;
+  timestamp: string;
+}
 
-  return locationMappings[location] || locationMappings["Delhi, India"];
-};
-
-const generateHistoricalData = (location: string) => {
-  const baseAQI = getLocationData(location).aqi;
-  return Array.from({ length: 9 }, (_, i) => ({
-    date: new Date(Date.now() - (8 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    aqi: Math.max(20, baseAQI + (Math.random() - 0.5) * 60)
+const generateHistoricalData = (baseAQI: number) =>
+  Array.from({ length: 24 }, (_, i) => ({
+    date: new Date(Date.now() - (23 - i) * 60 * 60 * 1000).toISOString().split('T')[0],
+    time: new Date(Date.now() - (23 - i) * 60 * 60 * 1000).toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    }),
+    aqi: Math.max(0, Math.min(500, baseAQI + (Math.random() - 0.5) * 20)),
+    pm25: Math.max(0, baseAQI * 0.6 + (Math.random() - 0.5) * 10),
+    pm10: Math.max(0, baseAQI * 0.8 + (Math.random() - 0.5) * 15)
   }));
-};
 
-const generateForecastData = (location: string) => {
-  const baseAQI = getLocationData(location).aqi;
-  return Array.from({ length: 3 }, (_, i) => ({
+const generateForecastData = (baseAQI: number) =>
+  Array.from({ length: 7 }, (_, i) => ({
     date: new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    aqi: Math.max(20, baseAQI + (Math.random() - 0.5) * 40),
+    aqi: Math.max(0, Math.min(500, baseAQI + (Math.random() - 0.5) * 30)),
     confidence: Math.max(60, 90 - i * 10)
   }));
-};
 
 const Index = () => {
   const [selectedLocation, setSelectedLocation] = useState("Delhi, India");
-  const [currentData, setCurrentData] = useState(getLocationData("Delhi, India"));
-  const [historicalData, setHistoricalData] = useState(generateHistoricalData("Delhi, India"));
-  const [forecastData, setForecastData] = useState(generateForecastData("Delhi, India"));
+  const [currentData, setCurrentData] = useState<AQIData | null>(null);
+  const [historicalData, setHistoricalData] = useState(generateHistoricalData(165));
+  const [forecastData, setForecastData] = useState(generateForecastData(165));
   const [showNotifications, setShowNotifications] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRealTimeData, setIsRealTimeData] = useState(false);
+  const [currentCoordinates, setCurrentCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Load initial data
+  useEffect(() => {
+    loadLocationData("Delhi, India");
+  }, []);
+
+  // Set initial mock data if loading takes too long
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!currentData) {
+        console.log('Loading timeout, setting fallback data');
+        const fallbackData: AQIData = {
+          location: "Delhi, India",
+          aqi: 165,
+          category: "Unhealthy",
+          primaryPollutant: "PM2.5",
+          coordinates: { lat: 28.6139, lng: 77.2090 },
+          weather: {
+            temperature: 28,
+            humidity: 72,
+            windSpeed: 12,
+            visibility: 6
+          },
+          pollutants: {
+            pm25: 85.2,
+            pm10: 120.4,
+            o3: 42.1,
+            no2: 68.7,
+            so2: 15.3,
+            co: 1.8
+          },
+          cpcbStation: "Delhi - Anand Vihar",
+          state: "Delhi",
+          district: "Central Delhi",
+          timestamp: new Date().toISOString()
+        };
+        setCurrentData(fallbackData);
+        setHistoricalData(generateHistoricalData(165));
+        setForecastData(generateForecastData(165));
+        setIsRealTimeData(false);
+        setIsLoading(false);
+      }
+    }, 5000); // 5 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [currentData]);
+
+  const loadLocationData = async (location: string, coordinates?: { lat: number; lng: number }) => {
+    setIsLoading(true);
+    try {
+      let station: CPCBStation | null = null;
+
+      if (coordinates) {
+        // Find nearest station to coordinates
+        station = await cpcbApi.findNearestStation(coordinates.lat, coordinates.lng);
+        setCurrentCoordinates(coordinates);
+      } else {
+        // Search by city name
+        const stations = await cpcbApi.searchStationsByCity(location);
+        station = stations[0] || null;
+        if (station) {
+          setCurrentCoordinates({ lat: station.latitude, lng: station.longitude });
+        }
+      }
+
+      if (station) {
+        // If user provided coordinates (from a locality suggestion or current location),
+        // prefer showing the user's selected locality text for display
+        const displayLocation = coordinates ? location : `${station.city}, ${station.state}`;
+        const aqiData: AQIData = {
+          location: displayLocation,
+          aqi: station.aqi,
+          category: station.category,
+          primaryPollutant: station.primaryPollutant,
+          coordinates: { lat: station.latitude, lng: station.longitude },
+          weather: {
+            temperature: Math.round(20 + Math.random() * 15), // Mock weather data
+            humidity: Math.round(50 + Math.random() * 30),
+            windSpeed: Math.round(5 + Math.random() * 15),
+            visibility: Math.round(5 + Math.random() * 10)
+          },
+          pollutants: station.pollutants,
+          cpcbStation: station.name,
+          state: station.state,
+          district: station.city,
+          timestamp: station.lastUpdate
+        };
+
+        setCurrentData(aqiData);
+        setHistoricalData(generateHistoricalData(station.aqi));
+        setForecastData(generateForecastData(station.aqi));
+        setIsRealTimeData(true);
+        console.log(`Loaded real CPCB data for ${station.name}: AQI ${station.aqi}`);
+      } else {
+        // Fallback to mock data if no station found
+        console.warn(`No CPCB station found for ${location}, using mock data`);
+        const fallbackData: AQIData = {
+          location: location,
+          aqi: 120 + Math.random() * 80, // Random AQI between 120-200
+          category: "Moderate",
+          primaryPollutant: "PM2.5",
+          coordinates: coordinates || { lat: 28.6139, lng: 77.2090 },
+          weather: {
+            temperature: Math.round(20 + Math.random() * 15),
+            humidity: Math.round(50 + Math.random() * 30),
+            windSpeed: Math.round(5 + Math.random() * 15),
+            visibility: Math.round(5 + Math.random() * 10)
+          },
+          pollutants: {
+            pm25: 50 + Math.random() * 50,
+            pm10: 70 + Math.random() * 60,
+            o3: 30 + Math.random() * 20,
+            no2: 40 + Math.random() * 30,
+            so2: 10 + Math.random() * 10,
+            co: 1 + Math.random() * 2
+          },
+          cpcbStation: `${location} - Mock Station`,
+          state: location.split(',')[1]?.trim() || 'Unknown',
+          district: location.split(',')[0]?.trim() || 'Unknown',
+          timestamp: new Date().toISOString()
+        };
+        setCurrentData(fallbackData);
+        setHistoricalData(generateHistoricalData(fallbackData.aqi));
+        setForecastData(generateForecastData(fallbackData.aqi));
+        setIsRealTimeData(false);
+      }
+    } catch (error) {
+      console.error("Error loading location data:", error);
+      // Set fallback data on error
+      const fallbackData: AQIData = {
+        location: location,
+        aqi: 120 + Math.random() * 80,
+        category: "Moderate",
+        primaryPollutant: "PM2.5",
+        coordinates: coordinates || { lat: 28.6139, lng: 77.2090 },
+        weather: {
+          temperature: Math.round(20 + Math.random() * 15),
+          humidity: Math.round(50 + Math.random() * 30),
+          windSpeed: Math.round(5 + Math.random() * 15),
+          visibility: Math.round(5 + Math.random() * 10)
+        },
+        pollutants: {
+          pm25: 50 + Math.random() * 50,
+          pm10: 70 + Math.random() * 60,
+          o3: 30 + Math.random() * 20,
+          no2: 40 + Math.random() * 30,
+          so2: 10 + Math.random() * 10,
+          co: 1 + Math.random() * 2
+        },
+        cpcbStation: `${location} - Mock Station`,
+        state: location.split(',')[1]?.trim() || 'Unknown',
+        district: location.split(',')[0]?.trim() || 'Unknown',
+        timestamp: new Date().toISOString()
+      };
+      setCurrentData(fallbackData);
+      setHistoricalData(generateHistoricalData(fallbackData.aqi));
+      setForecastData(generateForecastData(fallbackData.aqi));
+      setIsRealTimeData(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Update data when location changes
   useEffect(() => {
-    const newData = getLocationData(selectedLocation);
-    setCurrentData({
-      ...newData,
-      timestamp: new Date().toISOString()
-    });
-    setHistoricalData(generateHistoricalData(selectedLocation));
-    setForecastData(generateForecastData(selectedLocation));
+    if (selectedLocation) {
+      loadLocationData(selectedLocation, currentCoordinates || undefined);
+    }
   }, [selectedLocation]);
 
-  // Simulate real-time CPCB updates
+  // Simulate real-time updates for current data
   useEffect(() => {
+    if (!currentData || !isRealTimeData) return;
+
     const interval = setInterval(() => {
-      setCurrentData(prev => ({
-        ...prev,
-        aqi: Math.max(0, Math.min(500, prev.aqi + (Math.random() - 0.5) * 10)),
-        timestamp: new Date().toISOString(),
-        pollutants: {
-          ...prev.pollutants,
-          pm25: Math.max(0, prev.pollutants.pm25 + (Math.random() - 0.5) * 5),
-          pm10: Math.max(0, prev.pollutants.pm10 + (Math.random() - 0.5) * 8)
-        }
-      }));
-    }, 30000);
+      setCurrentData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          aqi: Math.max(0, Math.min(500, prev.aqi + (Math.random() - 0.5) * 10)),
+          timestamp: new Date().toISOString(),
+          pollutants: {
+            ...prev.pollutants,
+            pm25: Math.max(0, prev.pollutants.pm25 + (Math.random() - 0.5) * 5),
+            pm10: Math.max(0, prev.pollutants.pm10 + (Math.random() - 0.5) * 8)
+          }
+        };
+      });
+    }, 30000); // Update every 30 seconds
 
     return () => clearInterval(interval);
-  }, []);
+  }, [currentData, isRealTimeData]);
 
-  const handleLocationChange = (location: string) => {
-    console.log(`Fetching CPCB data for: ${location}`);
+  const handleLocationChange = (location: string, coordinates?: { lat: number; lng: number }) => {
+    console.log(`Fetching CPCB data for: ${location}`, coordinates);
     setSelectedLocation(location);
+    if (coordinates) {
+      setCurrentCoordinates(coordinates);
+    }
   };
+
+  if (!currentData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-green-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-orange-600" />
+          <p className="text-gray-600">Loading air quality data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-green-50 to-blue-50">
@@ -160,13 +289,17 @@ const Index = () => {
               <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-green-600 bg-clip-text text-transparent">
                 AirGuardian India
               </h1>
-              <p className="text-sm text-gray-600">Real-time CPCB Air Quality Intelligence</p>
+              <p className="text-sm text-gray-600">
+                {isRealTimeData ? "Real-time CPCB Air Quality Intelligence" : "Air Quality Monitoring (Demo Mode)"}
+              </p>
             </div>
             <div className="flex items-center space-x-4">
               <LocationSearch onLocationChange={handleLocationChange} />
               <div className="flex items-center space-x-2 text-sm">
-                <Activity className="h-4 w-4 text-green-500" />
-                <span className="text-green-600 font-medium">CPCB Live</span>
+                <Activity className={`h-4 w-4 ${isRealTimeData ? 'text-green-500' : 'text-orange-500'}`} />
+                <span className={`font-medium ${isRealTimeData ? 'text-green-600' : 'text-orange-600'}`}>
+                  {isRealTimeData ? 'CPCB Live' : 'Demo Data'}
+                </span>
               </div>
             </div>
           </div>
@@ -183,138 +316,104 @@ const Index = () => {
 
       <div className="container mx-auto px-4 py-6 space-y-6">
         {/* Current AQI Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-          <AQICard data={currentData} />
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <AQICard data={currentData} />
+          </div>
+          <div className="space-y-4">
+            <Card className="p-4">
+              <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
+                <MapPin className="h-4 w-4 mr-2" />
+                Station Info
+              </h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Station:</span>
+                  <span className="font-medium">{currentData.cpcbStation}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">State:</span>
+                  <span className="font-medium">{currentData.state}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">District:</span>
+                  <span className="font-medium">{currentData.district}</span>
+                </div>
+                {currentData.timestamp && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Last Update:</span>
+                    <span className="font-medium text-xs">
+                      {new Date(currentData.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </Card>
 
-        {/* Weather Context & CPCB Info */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <Wind className="h-5 w-5 mr-2 text-blue-500" />
-              Weather Context
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center space-x-2">
-                <Thermometer className="h-4 w-4 text-orange-500" />
-                <span className="text-sm text-gray-600">Temperature:</span>
-                <span className="font-medium">{currentData.weather.temperature}°C</span>
+            <Card className="p-4">
+              <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
+                <Thermometer className="h-4 w-4 mr-2" />
+                Weather
+              </h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="flex items-center space-x-2">
+                  <Thermometer className="h-4 w-4 text-red-500" />
+                  <span>{currentData.weather.temperature}°C</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Droplets className="h-4 w-4 text-blue-500" />
+                  <span>{currentData.weather.humidity}%</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Wind className="h-4 w-4 text-green-500" />
+                  <span>{currentData.weather.windSpeed} km/h</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Eye className="h-4 w-4 text-purple-500" />
+                  <span>{currentData.weather.visibility} km</span>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <Droplets className="h-4 w-4 text-blue-500" />
-                <span className="text-sm text-gray-600">Humidity:</span>
-                <span className="font-medium">{currentData.weather.humidity}%</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Wind className="h-4 w-4 text-gray-500" />
-                <span className="text-sm text-gray-600">Wind:</span>
-                <span className="font-medium">{currentData.weather.windSpeed} km/h</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Eye className="h-4 w-4 text-purple-500" />
-                <span className="text-sm text-gray-600">Visibility:</span>
-                <span className="font-medium">{currentData.weather.visibility} km</span>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <MapPin className="h-5 w-5 mr-2 text-green-500" />
-              CPCB Station Info
-            </h3>
-            <div className="space-y-3">
-              <div>
-                <span className="text-sm text-gray-600">Station:</span>
-                <span className="font-medium ml-2">{currentData.cpcbStation}</span>
-              </div>
-              <div>
-                <span className="text-sm text-gray-600">State:</span>
-                <span className="font-medium ml-2">{currentData.state}</span>
-              </div>
-              <div>
-                <span className="text-sm text-gray-600">District:</span>
-                <span className="font-medium ml-2">{currentData.district}</span>
-              </div>
-              <div>
-                <span className="text-sm text-gray-600">Last Updated:</span>
-                <span className="font-medium ml-2">
-                  {new Date(currentData.timestamp).toLocaleTimeString('en-IN')}
-                </span>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          </div>
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="india-map" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="india-map">India Map</TabsTrigger>
-            <TabsTrigger value="trends">Historical Data</TabsTrigger>
-            <TabsTrigger value="forecast">3-Day Forecast</TabsTrigger>
-            <TabsTrigger value="health">Health Advisory</TabsTrigger>
-            <TabsTrigger value="pollution-sources">Pollution Sources</TabsTrigger>
+        <Tabs defaultValue="map" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="map">India Map</TabsTrigger>
+            <TabsTrigger value="trends">Trends</TabsTrigger>
+            <TabsTrigger value="forecast">Forecast</TabsTrigger>
+            <TabsTrigger value="sources">Pollution Sources</TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="india-map" className="mt-6">
+
+          <TabsContent value="map" className="space-y-6">
             <IndiaAQIMap currentLocation={currentData} />
           </TabsContent>
-          
-          <TabsContent value="trends" className="mt-6">
-            <TrendChart data={historicalData} />
+
+          <TabsContent value="trends" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center">
+                  <TrendingUp className="h-5 w-5 mr-2" />
+                  24-Hour AQI Trend
+                </h3>
+                <TrendChart data={historicalData} />
+              </Card>
+              <HealthRecommendations aqi={currentData.aqi} category={currentData.category} />
+            </div>
           </TabsContent>
-          
-          <TabsContent value="forecast" className="mt-6">
-            <ForecastChart data={forecastData} />
+
+          <TabsContent value="forecast" className="space-y-6">
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">7-Day AQI Forecast</h3>
+              <ForecastChart data={forecastData} />
+            </Card>
           </TabsContent>
-          
-          <TabsContent value="health" className="mt-6">
-            <HealthRecommendations aqi={currentData.aqi} category={currentData.category} />
-          </TabsContent>
-          
-          <TabsContent value="pollution-sources" className="mt-6">
+
+          <TabsContent value="sources" className="space-y-6">
             <PollutionSourceMap />
           </TabsContent>
         </Tabs>
-
-        {/* Pollutant Analysis */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <Activity className="h-5 w-5 mr-2 text-purple-500" />
-            Pollutant Breakdown (CPCB Standards)
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Object.entries(currentData.pollutants).map(([pollutant, value]) => {
-              const numValue = Number(value);
-              const isHigh = pollutant === 'pm25' ? numValue > 60 : pollutant === 'pm10' ? numValue > 100 : numValue > 40;
-              return (
-                <div key={pollutant} className={`${isHigh ? 'bg-red-50 border-red-200' : 'bg-gray-50'} rounded-lg p-4 border`}>
-                  <div className="text-sm text-gray-600 uppercase tracking-wide">
-                    {pollutant.replace(/(\d+)/, '$1.')}
-                  </div>
-                  <div className={`text-2xl font-bold ${isHigh ? 'text-red-600' : 'text-gray-900'}`}>
-                    {numValue.toFixed(1)} <span className="text-sm text-gray-500">μg/m³</span>
-                  </div>
-                  {isHigh && (
-                    <div className="flex items-center mt-1">
-                      <AlertTriangle className="h-3 w-3 text-red-500 mr-1" />
-                      <span className="text-xs text-red-600">Above safe limit</span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-semibold text-blue-800 mb-2">Indian NAAQS Standards</h4>
-            <div className="text-sm text-blue-700 space-y-1">
-              <p>PM2.5: 60 μg/m³ (24-hour average)</p>
-              <p>PM10: 100 μg/m³ (24-hour average)</p>
-              <p>NO₂: 80 μg/m³ (24-hour average)</p>
-              <p>SO₂: 80 μg/m³ (24-hour average)</p>
-            </div>
-          </div>
-        </Card>
       </div>
     </div>
   );
